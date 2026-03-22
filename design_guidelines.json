@@ -1,0 +1,207 @@
+{
+  "persona": {
+    "identity": "E1: The Anti-AI Designer",
+    "mission": "Create a Veterinary CRM that feels like a high-end medical instrument—precise, sterile yet warm, and radically efficient.",
+    "core_principles": [
+      "Fusion over Imitation: Mix 'Medical Precision' with 'Industrial Design' aesthetics.",
+      "Emotion First: Trust and Efficiency. The UI should feel 'snappy' and 'solid'.",
+      "Content is King: Data legibility is paramount. High contrast, clear hierarchy.",
+      "Negative Space: Use spacing to group logic, not just for decoration.",
+      "Contrast: High contrast Orange vs Deep Obsidian for focus management."
+    ]
+  },
+  "project_context": {
+    "app_name": "VetFlow CRM",
+    "app_type": "SaaS Dashboard / CRM",
+    "target_audience": "Veterinarians, Clinic Admins",
+    "key_features": ["Dashboard", "Patients", "Doctors", "Inventory", "AI Assistant"],
+    "emotional_tone": "Modern, Efficient, Clinical, High-Tech",
+    "theme_strategy": "Dual-Mode with 'Obsidian' default. Primary Orange accent."
+  },
+  "design_system": {
+    "colors": {
+      "palette_name": "Clinical Obsidian & Vital Orange",
+      "mode": "dark",
+      "primary": {
+        "hex": "#f97316",
+        "tailwind": "orange-500",
+        "usage": "Primary Actions, Active States, Key Metrics",
+        "description": "Vitality and Action. Use sparingly for high impact."
+      },
+      "secondary": {
+        "hex": "#3f3f46",
+        "tailwind": "zinc-700",
+        "usage": "Secondary buttons, Borders, Inactive states",
+        "description": "Structural support. Subtle but visible."
+      },
+      "background": {
+        "hex": "#09090b",
+        "tailwind": "zinc-950",
+        "usage": "Main application background",
+        "description": "Deepest void for maximum contrast."
+      },
+      "surface": {
+        "hex": "#18181b",
+        "tailwind": "zinc-900",
+        "usage": "Cards, Sidebars, Modals",
+        "description": "Slightly elevated surface for content containers."
+      },
+      "text": {
+        "primary": "#fafafa",
+        "secondary": "#a1a1aa",
+        "muted": "#52525b"
+      },
+      "accents": {
+        "success": "#22c55e",
+        "warning": "#eab308",
+        "error": "#ef4444",
+        "info": "#3b82f6"
+      },
+      "gradients": {
+        "hero_glow": "radial-gradient(circle at center, rgba(249, 115, 22, 0.15) 0%, rgba(9, 9, 11, 0) 70%)",
+        "card_beam": "linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent)"
+      }
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "weights": {
+        "heading_bold": "700",
+        "heading_light": "300",
+        "body_regular": "400",
+        "body_medium": "500"
+      },
+      "scale": {
+        "h1": "text-4xl md:text-5xl tracking-tight font-bold",
+        "h2": "text-3xl md:text-4xl tracking-tight font-semibold",
+        "h3": "text-2xl font-semibold tracking-tight",
+        "body_lg": "text-lg leading-relaxed",
+        "body_base": "text-base leading-relaxed",
+        "body_sm": "text-sm leading-normal text-muted-foreground",
+        "caption": "text-xs uppercase tracking-wider text-muted-foreground"
+      }
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "card_padding": "p-6",
+      "section_gap": "gap-8",
+      "item_gap": "gap-4",
+      "layout_scale": "generous"
+    },
+    "radius": {
+      "default": "rounded-md",
+      "button": "rounded-md",
+      "card": "rounded-lg",
+      "input": "rounded-md"
+    },
+    "shadows": {
+      "card": "shadow-none border border-border/50",
+      "hover": "shadow-[0_0_20px_rgba(249,115,22,0.1)]",
+      "glow": "0 0 10px rgba(249, 115, 22, 0.3)"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "enabled": true,
+      "classes": "bg-zinc-950/80 backdrop-blur-md border-b border-white/5",
+      "usage": "Sticky Top Navigation, Toast Notifications"
+    },
+    "borders": {
+      "style": "Technical/Thin",
+      "classes": "border border-white/10"
+    },
+    "micro_interactions": {
+      "hover_lift": "transition-transform duration-200 hover:-translate-y-1",
+      "button_press": "active:scale-95 transition-transform",
+      "fade_in": "animate-in fade-in zoom-in-95 duration-300"
+    }
+  },
+  "layout_strategies": {
+    "dashboard_grid": {
+      "type": "Bento Grid (High Density)",
+      "classes": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+      "span_logic": {
+        "hero_metric": "col-span-1 md:col-span-2 lg:col-span-1",
+        "main_chart": "col-span-1 md:col-span-3 lg:col-span-3 row-span-2",
+        "list_feed": "col-span-1 md:col-span-1 row-span-2"
+      }
+    },
+    "marketing_layout": {
+      "type": "Tetris Grid",
+      "classes": "grid grid-cols-1 md:grid-cols-12 gap-8"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] transition-all",
+      "secondary": "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700",
+      "ghost": "hover:bg-orange-500/10 hover:text-orange-500 text-zinc-400"
+    },
+    "cards": {
+      "base": "bg-zinc-900/50 border border-white/5 hover:border-orange-500/30 transition-colors",
+      "header": "border-b border-white/5 pb-4 mb-4"
+    },
+    "inputs": {
+      "base": "bg-zinc-950 border-zinc-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all placeholder:text-zinc-600"
+    },
+    "sidebar": {
+      "base": "bg-zinc-950 border-r border-white/5",
+      "item_active": "bg-orange-500/10 text-orange-500 border-r-2 border-orange-500",
+      "item_inactive": "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+    }
+  },
+  "assets": {
+    "images": [
+      {
+        "id": "hero_dog",
+        "url": "https://images.pexels.com/photos/4040656/pexels-photo-4040656.jpeg",
+        "alt": "Minimalist dog in studio",
+        "category": "hero",
+        "description": "Clean, minimalist studio shot of a dog. Use for Login or Landing Hero."
+      },
+      {
+        "id": "vet_exam",
+        "url": "https://images.unsplash.com/photo-1770836037793-95bdbf190f71",
+        "alt": "Veterinarian examining dog",
+        "category": "doctors",
+        "description": "Professional veterinarian examining a patient. Use for 'Doctors' or 'Appointments' section."
+      },
+      {
+        "id": "vet_tech",
+        "url": "https://images.pexels.com/photos/6234607/pexels-photo-6234607.jpeg",
+        "alt": "Veterinary technology usage",
+        "category": "services",
+        "description": "High-tech medical equipment usage. Use for 'Gabinetes' or 'Services'."
+      },
+      {
+        "id": "pets_group",
+        "url": "https://images.pexels.com/photos/5731855/pexels-photo-5731855.jpeg",
+        "alt": "Group of pets",
+        "category": "patients",
+        "description": "Cheerful pets. Use for 'Patients' or 'Breeds' section."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px (Thin/Elegant)"
+    }
+  },
+  "universal_guidelines": [
+    "NEVER use gradients for text readability. Keep text high contrast.",
+    "Do NOT use pure black (#000000). Use #09090b or #121212 for less eye strain.",
+    "Interactive elements MUST have a hover state.",
+    "Use 'data-testid' on all interactive elements.",
+    "Tables should be 'comfortable' density, not 'compact'.",
+    "Forms: aligned to the left, labels above inputs.",
+    "Mobile Responsiveness: Sidebar becomes a bottom sheet or hamburger menu."
+  ],
+  "instructions_to_main_agent": {
+    "theme_setup": "Modify tailwind.config.js to extend colors with the specific 'orange-500' and 'zinc-950' palette defined here. Ensure 'dark' class is applied by default to html/body.",
+    "layout_setup": "Create a 'DashboardLayout' component that handles the Sidebar and Topbar structure. Use 'Outlet' for page content.",
+    "component_usage": "Use shadcn/ui components but override default rounded radii to 'md' or 'sm' for a sharper look. Override default blue focus rings with orange.",
+    "landing_page": "The landing page should be high-impact, using the 'hero_dog' image and large 'Manrope' typography. 'Get Started' button must be the primary orange CTA."
+  }
+}
