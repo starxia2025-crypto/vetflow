@@ -1213,13 +1213,6 @@ Siempre responde en el idioma del usuario."""
             system_message=system_message
         ).with_model("openai", "gpt-5.2")
         
-        # Build conversation
-        for msg in history[-10:]:  # Last 10 messages
-            if msg["role"] == "user":
-                chat.add_user_message(msg["content"])
-            else:
-                chat.add_assistant_message(msg["content"])
-        
         # Get response
         user_message = UserMessage(text=data.message)
         response = await chat.send_message(user_message)
