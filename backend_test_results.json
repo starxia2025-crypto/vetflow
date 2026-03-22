@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-03-22T16:59:48.720868",
+  "total_tests": 16,
+  "passed_tests": 16,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "test": "API Root Endpoint",
+      "success": true,
+      "details": "Status: 200, Data: {'message': 'VetFlow CRM API', 'status': 'running'}",
+      "endpoint": "/api/"
+    },
+    {
+      "test": "Auth Me (Unauthenticated)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/auth/me"
+    },
+    {
+      "test": "Dashboard Stats (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/dashboard/stats"
+    },
+    {
+      "test": "Upcoming Vaccines (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/dashboard/upcoming-vaccines"
+    },
+    {
+      "test": "Get Clients (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/clients"
+    },
+    {
+      "test": "Create Client (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/clients"
+    },
+    {
+      "test": "Get Pets (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/pets"
+    },
+    {
+      "test": "Get Doctors (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/doctors"
+    },
+    {
+      "test": "Get Cabinets (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/cabinets"
+    },
+    {
+      "test": "Get Species (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/species"
+    },
+    {
+      "test": "Get Breeds (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/breeds"
+    },
+    {
+      "test": "Get Inventory (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/inventory"
+    },
+    {
+      "test": "Get Invoices (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/invoices"
+    },
+    {
+      "test": "AI Chat (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/ai/chat"
+    },
+    {
+      "test": "Seed Data (No Auth)",
+      "success": true,
+      "details": "Expected 401, got 401",
+      "endpoint": "/api/seed"
+    },
+    {
+      "test": "Non-existent Endpoint",
+      "success": true,
+      "details": "Expected 404, got 404",
+      "endpoint": "/api/nonexistent"
+    }
+  ]
+}
