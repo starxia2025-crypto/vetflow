@@ -608,28 +608,65 @@ def invoice_to_dict(invoice: InvoiceModel, client: Optional[ClientModel] = None,
 
 
 async def seed_defaults_for_company(db: Session, company_id: str) -> None:
-    if db.query(SpeciesModel).filter(SpeciesModel.company_id == company_id).count() > 0:
-        return
     species_rows = [
-        ("spe_dog", "Perro", "Dog"),
-        ("spe_cat", "Gato", "Cat"),
-        ("spe_bird", "Ave", "Bird"),
-        ("spe_rabbit", "Conejo", "Rabbit"),
-        ("spe_hamster", "Hamster", "Hamster"),
-        ("spe_reptile", "Reptil", "Reptile"),
+        ("Perro", "Dog"),
+        ("Gato", "Cat"),
+        ("Ave", "Bird"),
+        ("Conejo", "Rabbit"),
+        ("Hamster", "Hamster"),
+        ("Reptil", "Reptile"),
     ]
-    for species_id, name, name_en in species_rows:
-        db.add(SpeciesModel(species_id=species_id, company_id=company_id, name=name, name_en=name_en))
+    existing_species = {
+        item.name_en or item.name: item
+        for item in db.query(SpeciesModel).filter(SpeciesModel.company_id == company_id).all()
+    }
+    species_by_key: Dict[str, SpeciesModel] = dict(existing_species)
+
+    for name, name_en in species_rows:
+        lookup_key = name_en or name
+        if lookup_key in species_by_key:
+            continue
+        species = SpeciesModel(
+            species_id=prefixed_id("spe"),
+            company_id=company_id,
+            name=name,
+            name_en=name_en,
+        )
+        db.add(species)
+        species_by_key[lookup_key] = species
+
+    db.flush()
+
     breed_rows = [
-        ("bre_labrador", "Labrador Retriever", "Labrador Retriever", "spe_dog"),
-        ("bre_german", "Pastor Aleman", "German Shepherd", "spe_dog"),
-        ("bre_bulldog", "Bulldog", "Bulldog", "spe_dog"),
-        ("bre_poodle", "Caniche", "Poodle", "spe_dog"),
-        ("bre_persian", "Persa", "Persian", "spe_cat"),
-        ("bre_siamese", "Siames", "Siamese", "spe_cat"),
+        ("Labrador Retriever", "Labrador Retriever", "Dog"),
+        ("Pastor Aleman", "German Shepherd", "Dog"),
+        ("Bulldog", "Bulldog", "Dog"),
+        ("Caniche", "Poodle", "Dog"),
+        ("Persa", "Persian", "Cat"),
+        ("Siames", "Siamese", "Cat"),
     ]
-    for breed_id, name, name_en, species_id in breed_rows:
-        db.add(BreedModel(breed_id=breed_id, company_id=company_id, species_id=species_id, name=name, name_en=name_en))
+    existing_breeds = {
+        item.name_en or item.name
+        for item in db.query(BreedModel).filter(BreedModel.company_id == company_id).all()
+    }
+
+    for name, name_en, species_key in breed_rows:
+        lookup_key = name_en or name
+        if lookup_key in existing_breeds:
+            continue
+        species = species_by_key.get(species_key)
+        if not species:
+            logger.warning("Skipping breed seed because species '%s' is missing for company %s", species_key, company_id)
+            continue
+        db.add(
+            BreedModel(
+                breed_id=prefixed_id("bre"),
+                company_id=company_id,
+                species_id=species.species_id,
+                name=name,
+                name_en=name_en,
+            )
+        )
     db.commit()
 
 
