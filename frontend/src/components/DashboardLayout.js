@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
@@ -25,14 +26,18 @@ import {
   LogOut,
   Menu,
   Globe,
+  Sun,
+  Moon,
   ChevronRight
 } from 'lucide-react';
 
 const DashboardLayout = () => {
   const { t, language, changeLanguage } = useLanguage();
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isLight = theme === 'light';
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
@@ -110,6 +115,14 @@ const DashboardLayout = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-zinc-900 border-zinc-800">
               <DropdownMenuItem 
+                onClick={() => setTheme(isLight ? 'dark' : 'light')}
+                className="cursor-pointer"
+                data-testid="theme-switch"
+              >
+                {isLight ? <Moon className="w-4 h-4 mr-2" /> : <Sun className="w-4 h-4 mr-2" />}
+                {isLight ? 'Dark mode' : 'Light mode'}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => changeLanguage(language === 'es' ? 'en' : 'es')}
                 className="cursor-pointer"
                 data-testid="language-switch"
@@ -173,6 +186,13 @@ const DashboardLayout = () => {
                 <p className="text-xs text-zinc-500">{user?.email}</p>
               </div>
               <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem 
+                onClick={() => setTheme(isLight ? 'dark' : 'light')}
+                className="cursor-pointer"
+              >
+                {isLight ? <Moon className="w-4 h-4 mr-2" /> : <Sun className="w-4 h-4 mr-2" />}
+                {isLight ? 'Dark mode' : 'Light mode'}
+              </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => changeLanguage(language === 'es' ? 'en' : 'es')}
                 className="cursor-pointer"

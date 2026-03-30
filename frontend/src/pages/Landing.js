@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, PawPrint, FileText, Package, Bot, Stethoscope } from 'lucide-react';
+import { Globe, PawPrint, FileText, Package, Bot, Stethoscope, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +16,7 @@ const initialRegister = { name: '', clinic_name: '', email: '', password: '' };
 const Landing = () => {
   const { t, language, changeLanguage } = useLanguage();
   const { user, loginWithPassword, register, startGoogleLogin } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [mode, setMode] = useState('login');
   const [loginForm, setLoginForm] = useState(initialLogin);
@@ -63,6 +65,8 @@ const Landing = () => {
     }
   };
 
+  const isLight = theme === 'light';
+
   return (
     <div className="min-h-screen bg-zinc-950 relative overflow-hidden">
       <div
@@ -80,16 +84,27 @@ const Landing = () => {
           <span className="text-2xl font-bold text-white font-['Manrope']">VetFlow</span>
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => changeLanguage(language === 'es' ? 'en' : 'es')}
-          className="text-zinc-400 hover:text-orange-500"
-          data-testid="language-toggle"
-        >
-          <Globe className="w-4 h-4 mr-2" />
-          {language === 'es' ? 'EN' : 'ES'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(isLight ? 'dark' : 'light')}
+            className="text-zinc-400 hover:text-orange-500"
+            data-testid="theme-toggle"
+          >
+            {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => changeLanguage(language === 'es' ? 'en' : 'es')}
+            className="text-zinc-400 hover:text-orange-500"
+            data-testid="language-toggle"
+          >
+            <Globe className="w-4 h-4 mr-2" />
+            {language === 'es' ? 'EN' : 'ES'}
+          </Button>
+        </div>
       </header>
 
       <main className="relative z-10 px-6 md:px-12 pb-16">
