@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from './components/ui/sonner';
 import DashboardLayout from './components/DashboardLayout';
 import Landing from './pages/Landing';
-import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Pets from './pages/Pets';
@@ -21,7 +20,6 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // If user was passed from AuthCallback, skip loading state
   if (location.state?.user) {
     return children;
   }
@@ -42,14 +40,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function AppRouter() {
-  const location = useLocation();
-  
-  // CRITICAL: Check for session_id synchronously during render
-  // This prevents race conditions with ProtectedRoute
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
-
   return (
     <Routes>
       <Route path="/" element={<Landing />} />

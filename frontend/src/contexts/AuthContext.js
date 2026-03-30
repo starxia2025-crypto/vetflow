@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const API_ORIGIN = API_URL ? new URL(API_URL).origin : window.location.origin;
 
 const AuthContext = createContext();
 
@@ -29,19 +30,75 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id and establish the session first.
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    if (window.location.hash?.includes('session_id=')) {
-      setLoading(false);
-      return;
-    }
     checkAuth();
   }, [checkAuth]);
 
   const login = useCallback((userData) => {
     setUser(userData);
   }, []);
+
+  const loginWithPassword = useCallback(async ({ email, password }) => {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'No se pudo iniciar sesión');
+    }
+
+    setUser(data);
+    return data;
+  }, []);
+
+  const register = useCallback(async ({ name, email, password, clinic_name }) => {
+    const response = await fetch(`${API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ name, email, password, clinic_name })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || 'No se pudo crear la cuenta');
+    }
+
+    setUser(data);
+    return data;
+  }, []);
+
+  const startGoogleLogin = useCallback(() => {
+    const popup = window.open(
+      `${API_URL}/api/auth/google/start?popup=1`,
+      'vetflow-google-login',
+      'popup=yes,width=520,height=720'
+    );
+
+    popup?.focus();
+  }, []);
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (event.origin !== API_ORIGIN && event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data?.type === 'vetflow-auth-success') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [checkAuth]);
 
   const logout = useCallback(async () => {
     try {
@@ -56,7 +113,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithPassword, register, startGoogleLogin, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
