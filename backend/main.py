@@ -469,7 +469,8 @@ def maybe_serialize_date(value: Optional[datetime]) -> Optional[str]:
     return value.isoformat() if value else None
 
 
-def user_to_dict(user: UserModel) -> Dict[str, Any]:
+def user_to_dict(user: UserModel, company: Optional[CompanyModel] = None) -> Dict[str, Any]:
+    resolved_company = company or user.company
     return {
         "user_id": user.user_id,
         "email": user.email,
@@ -477,7 +478,7 @@ def user_to_dict(user: UserModel) -> Dict[str, Any]:
         "picture": user.picture,
         "role": user.role,
         "company_id": user.company_id,
-        "company_name": user.company.name if user.company else None,
+        "company_name": resolved_company.name if resolved_company else None,
         "created_at": user.created_at.isoformat(),
     }
 
@@ -673,7 +674,7 @@ async def register(data: RegisterInput, response: Response, db: Session = Depend
     db.refresh(user)
     await seed_defaults_for_company(db, company.company_id)
     await create_session(response, db, user)
-    return user_to_dict(user)
+    return user_to_dict(user, company)
 
 
 @api_router.post("/auth/login")
@@ -681,8 +682,9 @@ async def login(data: LoginInput, response: Response, db: Session = Depends(get_
     user = db.query(UserModel).filter(UserModel.email == data.email.lower()).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first()
     await create_session(response, db, user)
-    return user_to_dict(user)
+    return user_to_dict(user, company)
 
 
 @api_router.get("/auth/google/start")
@@ -774,6 +776,7 @@ async def auth_google_callback(request: Request, code: str, state: str, db: Sess
             db.add(user)
     db.commit()
     db.refresh(user)
+    company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first()
     await seed_defaults_for_company(db, user.company_id)
 
     if popup == "1":
@@ -801,8 +804,9 @@ async def auth_google_callback(request: Request, code: str, state: str, db: Sess
 
 
 @api_router.get("/auth/me")
-def auth_me(user: UserModel = Depends(get_current_user)) -> Dict[str, Any]:
-    return user_to_dict(user)
+def auth_me(user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)) -> Dict[str, Any]:
+    company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first()
+    return user_to_dict(user, company)
 
 
 @api_router.post("/auth/logout")

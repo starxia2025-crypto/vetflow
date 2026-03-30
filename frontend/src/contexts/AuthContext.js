@@ -5,6 +5,19 @@ const API_ORIGIN = API_URL ? new URL(API_URL).origin : window.location.origin;
 
 const AuthContext = createContext();
 
+const parseResponse = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return await response.json();
+  }
+
+  const text = await response.text();
+  return {
+    detail: text || 'Unexpected server response'
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +60,7 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password })
     });
 
-    const data = await response.json();
+    const data = await parseResponse(response);
     if (!response.ok) {
       throw new Error(data.detail || 'No se pudo iniciar sesión');
     }
@@ -66,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ name, email, password, clinic_name })
     });
 
-    const data = await response.json();
+    const data = await parseResponse(response);
     if (!response.ok) {
       throw new Error(data.detail || 'No se pudo crear la cuenta');
     }
