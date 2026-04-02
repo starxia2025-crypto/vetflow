@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000").rstrip("/")
+PORTAL_API_BASE_URL = os.environ.get("PORTAL_API_BASE_URL", "").rstrip("/")
+PORTAL_SYNC_INTERVAL_SECONDS = int(os.environ.get("PORTAL_SYNC_INTERVAL_SECONDS", "300"))
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN") or None
@@ -83,6 +85,9 @@ class CompanyModel(Base):
     slug = __import__("sqlalchemy").Column(String(255), nullable=False, unique=True)
     account_mode = __import__("sqlalchemy").Column(String(32), nullable=False, default="production")
     trial_ends_at = __import__("sqlalchemy").Column(DateTime(timezone=True), nullable=True)
+    portal_user_id = __import__("sqlalchemy").Column(String(64), nullable=True)
+    portal_product_key = __import__("sqlalchemy").Column(String(64), nullable=True)
+    portal_last_synced_at = __import__("sqlalchemy").Column(DateTime(timezone=True), nullable=True)
     created_at = __import__("sqlalchemy").Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
@@ -456,6 +461,12 @@ def get_current_user(
     user = db.query(UserModel).filter(UserModel.user_id == session.user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first()
+    if not company:
+        raise HTTPException(status_code=401, detail="Company not found")
+    company = sync_company_access_from_portal(db, company)
+    if company.account_mode == "demo" and company.trial_ends_at and company.trial_ends_at <= utcnow():
+        raise HTTPException(status_code=403, detail="La demo de este plan ha caducado. Activa una suscripcion para seguir usando VetFlow.")
     return user
 
 
@@ -480,6 +491,64 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed
+
+
+def should_sync_company_access(company: CompanyModel) -> bool:
+    if not PORTAL_API_BASE_URL or not SSO_SHARED_SECRET:
+        return False
+    if not company.portal_user_id or not company.portal_product_key:
+        return False
+    if not company.portal_last_synced_at:
+        return True
+    return company.portal_last_synced_at <= utcnow() - timedelta(seconds=PORTAL_SYNC_INTERVAL_SECONDS)
+
+
+def portal_status_message(status: str) -> str:
+    messages = {
+        "expired": "La demo de este plan ha caducado. Activa una suscripcion para seguir usando VetFlow.",
+        "cancelled": "Este plan ha sido cancelado desde el portal central.",
+        "past_due": "Este plan tiene un pago pendiente. Regularizalo en el portal central para seguir usando VetFlow.",
+        "pending": "El pago del plan aun esta en proceso. Vuelve a intentarlo en unos instantes.",
+        "not_found": "Este producto no esta activo en el portal central.",
+    }
+    return messages.get(status, "Este producto no tiene acceso activo en el portal central.")
+
+
+def sync_company_access_from_portal(db: Session, company: CompanyModel) -> CompanyModel:
+    if not should_sync_company_access(company):
+        return company
+
+    try:
+        response = httpx.get(
+            f"{PORTAL_API_BASE_URL}/api/sso/status",
+            params={
+                "portalUserId": company.portal_user_id,
+                "productKey": company.portal_product_key,
+            },
+            headers={"x-sso-secret": SSO_SHARED_SECRET, "accept": "application/json"},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except Exception as exc:
+        logger.warning("Could not sync company access from Starxia portal: %s", exc)
+        return company
+
+    company.portal_last_synced_at = utcnow()
+    status = str(payload.get("status") or "not_found").strip().lower()
+    access_mode = str(payload.get("accessMode") or "production").strip().lower()
+    trial_ends_at = parse_iso_datetime(payload.get("trialEndsAt"))
+
+    company.account_mode = "demo" if access_mode == "demo" else "production"
+    company.trial_ends_at = trial_ends_at if access_mode == "demo" else None
+    db.add(company)
+    db.commit()
+    db.refresh(company)
+
+    if not payload.get("allowed"):
+        raise HTTPException(status_code=403, detail=portal_status_message(status))
+
+    return company
 
 
 def user_to_dict(user: UserModel, company: Optional[CompanyModel] = None) -> Dict[str, Any]:
@@ -744,6 +813,11 @@ async def login(data: LoginInput, response: Response, db: Session = Depends(get_
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first()
+    if not company:
+        raise HTTPException(status_code=401, detail="Company not found")
+    company = sync_company_access_from_portal(db, company)
+    if company.account_mode == "demo" and company.trial_ends_at and company.trial_ends_at <= utcnow():
+        raise HTTPException(status_code=403, detail="La demo de este plan ha caducado. Activa una suscripcion para seguir usando VetFlow.")
     await create_session(response, db, user)
     return user_to_dict(user, company)
 
@@ -898,6 +972,8 @@ async def consume_sso(token: str, db: Session = Depends(get_db)) -> Response:
     avatar_url = payload.get("avatarUrl")
     account_mode = "demo" if payload.get("accessMode") == "demo" else "production"
     trial_ends_at = parse_iso_datetime(payload.get("trialEndsAt"))
+    portal_user_id = str(payload.get("portalUserId", "")).strip()
+    portal_product_key = str(payload.get("productKey", "")).strip() or "erp-veterinaria"
 
     if not email:
         raise HTTPException(status_code=400, detail="SSO payload is missing email")
@@ -919,6 +995,9 @@ async def consume_sso(token: str, db: Session = Depends(get_db)) -> Response:
             slug=company_slug,
             account_mode=account_mode,
             trial_ends_at=trial_ends_at if account_mode == "demo" else None,
+            portal_user_id=portal_user_id or None,
+            portal_product_key=portal_product_key,
+            portal_last_synced_at=utcnow(),
         )
         user = UserModel(
             user_id=prefixed_id("user"),
@@ -940,6 +1019,9 @@ async def consume_sso(token: str, db: Session = Depends(get_db)) -> Response:
 
     company.account_mode = account_mode
     company.trial_ends_at = trial_ends_at if account_mode == "demo" else None
+    company.portal_user_id = portal_user_id or company.portal_user_id
+    company.portal_product_key = portal_product_key or company.portal_product_key
+    company.portal_last_synced_at = utcnow()
     if avatar_url and not user.picture:
         user.picture = avatar_url
     if full_name and user.name != full_name:
@@ -1530,3 +1612,6 @@ def startup() -> None:
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS account_mode VARCHAR(32) NOT NULL DEFAULT 'production'"))
         connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ"))
+        connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS portal_user_id VARCHAR(64)"))
+        connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS portal_product_key VARCHAR(64)"))
+        connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS portal_last_synced_at TIMESTAMPTZ"))
