@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Globe, PawPrint, FileText, Package, Bot, Stethoscope, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -6,23 +6,15 @@ import { useTheme } from 'next-themes';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 
-const initialLogin = { email: '', password: '' };
-const initialRegister = { name: '', clinic_name: '', email: '', password: '' };
+const PORTAL_BASE_URL = process.env.REACT_APP_PORTAL_URL || 'https://www.starxia.com';
 
 const Landing = () => {
   const { t, language, changeLanguage } = useLanguage();
-  const { user, loginWithPassword, register, startGoogleLogin } = useAuth();
+  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-  const [mode, setMode] = useState('login');
-  const [loginForm, setLoginForm] = useState(initialLogin);
-  const [registerForm, setRegisterForm] = useState(initialRegister);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -37,42 +29,20 @@ const Landing = () => {
     { icon: Bot, title: t('feature4Title'), description: t('feature4Desc') }
   ];
 
-  const handleLogin = async (event) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError('');
-    try {
-      await loginWithPassword(loginForm);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.message || 'No se pudo iniciar sesión');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleRegister = async (event) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError('');
-    try {
-      await register(registerForm);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.message || 'No se pudo crear la cuenta');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const isLight = theme === 'light';
+  const loginPortalUrl = new URL('/iniciar-sesion', PORTAL_BASE_URL);
+  loginPortalUrl.searchParams.set('product', 'erp-veterinaria');
+  const registerPortalUrl = new URL('/registro', PORTAL_BASE_URL);
+  registerPortalUrl.searchParams.set('product', 'erp-veterinaria');
+  registerPortalUrl.searchParams.set('mode', 'demo');
 
   return (
     <div className="min-h-screen bg-zinc-950 relative overflow-hidden">
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.15) 0%, rgba(9, 9, 11, 0) 35%), radial-gradient(circle at 80% 30%, rgba(34, 197, 94, 0.08) 0%, rgba(9, 9, 11, 0) 30%)'
+          background:
+            'radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.15) 0%, rgba(9, 9, 11, 0) 35%), radial-gradient(circle at 80% 30%, rgba(34, 197, 94, 0.08) 0%, rgba(9, 9, 11, 0) 30%)'
         }}
       />
 
@@ -143,128 +113,29 @@ const Landing = () => {
           <Card className="card-surface border-white/10 shadow-2xl">
             <CardHeader>
               <CardTitle className="text-white font-['Manrope'] text-2xl">
-                {mode === 'login' ? 'Acceso privado' : 'Crear clínica'}
+                Acceso centralizado
               </CardTitle>
               <CardDescription>
-                {mode === 'login'
-                  ? 'Entra con email y contraseña o continúa con Google.'
-                  : 'Crea la cuenta principal de tu clínica veterinaria.'}
+                Inicia sesión o crea tu cuenta desde Starxia y luego entra en tu ERP veterinario sin volver a registrarte.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={mode === 'login' ? 'default' : 'outline'}
-                  className={mode === 'login' ? 'btn-primary' : 'btn-secondary'}
-                  onClick={() => setMode('login')}
-                >
-                  Iniciar sesión
-                </Button>
-                <Button
-                  type="button"
-                  variant={mode === 'register' ? 'default' : 'outline'}
-                  className={mode === 'register' ? 'btn-primary' : 'btn-secondary'}
-                  onClick={() => setMode('register')}
-                >
-                  Registrarse
-                </Button>
+              <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-4 text-sm text-zinc-200">
+                Desde Starxia podrás iniciar sesión con Google o email, crear tu empresa y activar la demo del ERP veterinario con continuidad real entre productos.
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={startGoogleLogin}
-                className="w-full border-white/10 text-white hover:bg-white/5"
-              >
-                Continuar con Google
-              </Button>
-
-              {error ? (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                  {error}
-                </div>
-              ) : null}
-
-              {mode === 'login' ? (
-                <form className="space-y-4" onSubmit={handleLogin}>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      value={loginForm.email}
-                      onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Contraseña</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={loginForm.password}
-                      onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
-                      className="input-field"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="btn-primary w-full" disabled={submitting}>
-                    {submitting ? 'Entrando...' : 'Entrar al ERP'}
+              <div className="grid gap-3">
+                <a href={loginPortalUrl.toString()} className="block">
+                  <Button type="button" className="btn-primary w-full">
+                    Iniciar sesión en Starxia
                   </Button>
-                </form>
-              ) : (
-                <form className="space-y-4" onSubmit={handleRegister}>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Nombre del admin</Label>
-                    <Input
-                      id="register-name"
-                      value={registerForm.name}
-                      onChange={(event) => setRegisterForm({ ...registerForm, name: event.target.value })}
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-clinic">Nombre de la clínica</Label>
-                    <Input
-                      id="register-clinic"
-                      value={registerForm.clinic_name}
-                      onChange={(event) => setRegisterForm({ ...registerForm, clinic_name: event.target.value })}
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      value={registerForm.email}
-                      onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value })}
-                      className="input-field"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Contraseña</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      value={registerForm.password}
-                      onChange={(event) => setRegisterForm({ ...registerForm, password: event.target.value })}
-                      className="input-field"
-                      minLength={8}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="btn-primary w-full" disabled={submitting}>
-                    {submitting ? 'Creando...' : 'Crear cuenta'}
+                </a>
+                <a href={registerPortalUrl.toString()} className="block">
+                  <Button type="button" variant="outline" className="btn-secondary w-full">
+                    Crear cuenta y comenzar demo
                   </Button>
-                </form>
-              )}
+                </a>
+              </div>
             </CardContent>
           </Card>
         </div>

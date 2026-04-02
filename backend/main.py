@@ -11,9 +11,10 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
+from jose import jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, func, text
 from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker
 from starlette.middleware.cors import CORSMiddleware
 
@@ -35,6 +36,7 @@ COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN") or None
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").lower()
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.environ.get("ACCESS_TOKEN_EXPIRE_DAYS", "30"))
+SSO_SHARED_SECRET = os.environ.get("SSO_SHARED_SECRET", "")
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
@@ -79,6 +81,8 @@ class CompanyModel(Base):
     company_id = __import__("sqlalchemy").Column(String(32), primary_key=True)
     name = __import__("sqlalchemy").Column(String(255), nullable=False)
     slug = __import__("sqlalchemy").Column(String(255), nullable=False, unique=True)
+    account_mode = __import__("sqlalchemy").Column(String(32), nullable=False, default="production")
+    trial_ends_at = __import__("sqlalchemy").Column(DateTime(timezone=True), nullable=True)
     created_at = __import__("sqlalchemy").Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
@@ -469,6 +473,15 @@ def maybe_serialize_date(value: Optional[datetime]) -> Optional[str]:
     return value.isoformat() if value else None
 
 
+def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def user_to_dict(user: UserModel, company: Optional[CompanyModel] = None) -> Dict[str, Any]:
     resolved_company = company or user.company
     return {
@@ -479,8 +492,19 @@ def user_to_dict(user: UserModel, company: Optional[CompanyModel] = None) -> Dic
         "role": user.role,
         "company_id": user.company_id,
         "company_name": resolved_company.name if resolved_company else None,
+        "company_account_mode": resolved_company.account_mode if resolved_company else None,
+        "company_trial_ends_at": resolved_company.trial_ends_at.isoformat() if resolved_company and resolved_company.trial_ends_at else None,
         "created_at": user.created_at.isoformat(),
     }
+
+
+def decode_sso_token(token: str) -> Dict[str, Any]:
+    if not SSO_SHARED_SECRET:
+        raise HTTPException(status_code=503, detail="SSO is not configured")
+    try:
+        return jwt.decode(token, SSO_SHARED_SECRET, algorithms=["HS256"])
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid SSO token") from exc
 
 
 def client_to_dict(client: ClientModel) -> Dict[str, Any]:
@@ -859,6 +883,73 @@ def auth_logout(
         db.commit()
     clear_cookie(response, "session_token")
     return {"message": "Logged out"}
+
+
+@api_router.get("/sso/consume")
+async def consume_sso(token: str, db: Session = Depends(get_db)) -> Response:
+    payload = decode_sso_token(token)
+    product_key = payload.get("productKey")
+    if product_key != "erp-veterinaria":
+        raise HTTPException(status_code=403, detail="This product cannot access VetFlow")
+
+    email = str(payload.get("email", "")).strip().lower()
+    full_name = str(payload.get("fullName", "")).strip() or "Usuario Starxia"
+    clinic_name = str(payload.get("businessName", "")).strip() or f"{full_name.split(' ')[0]} Vet"
+    avatar_url = payload.get("avatarUrl")
+    account_mode = "demo" if payload.get("accessMode") == "demo" else "production"
+    trial_ends_at = parse_iso_datetime(payload.get("trialEndsAt"))
+
+    if not email:
+        raise HTTPException(status_code=400, detail="SSO payload is missing email")
+
+    user = db.query(UserModel).filter(UserModel.email == email).first()
+    company = db.query(CompanyModel).filter(CompanyModel.company_id == user.company_id).first() if user else None
+
+    if not user:
+        company_slug = slugify(clinic_name)
+        base_slug = company_slug
+        counter = 1
+        while db.query(CompanyModel).filter(CompanyModel.slug == company_slug).first():
+            counter += 1
+            company_slug = f"{base_slug}-{counter}"
+
+        company = CompanyModel(
+            company_id=prefixed_id("comp"),
+            name=clinic_name,
+            slug=company_slug,
+            account_mode=account_mode,
+            trial_ends_at=trial_ends_at if account_mode == "demo" else None,
+        )
+        user = UserModel(
+            user_id=prefixed_id("user"),
+            company_id=company.company_id,
+            email=email,
+            password_hash=hash_password(uuid.uuid4().hex),
+            name=full_name,
+            picture=avatar_url,
+            role="admin",
+        )
+        db.add(company)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        await seed_defaults_for_company(db, company.company_id)
+
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found for SSO user")
+
+    company.account_mode = account_mode
+    company.trial_ends_at = trial_ends_at if account_mode == "demo" else None
+    if avatar_url and not user.picture:
+        user.picture = avatar_url
+    if full_name and user.name != full_name:
+        user.name = full_name
+    db.commit()
+
+    response = Response(status_code=307)
+    await create_session(response, db, user)
+    response.headers["Location"] = f"{APP_BASE_URL}/dashboard"
+    return response
 
 
 @api_router.post("/seed")
@@ -1436,3 +1527,6 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS account_mode VARCHAR(32) NOT NULL DEFAULT 'production'"))
+        connection.execute(text("ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ"))

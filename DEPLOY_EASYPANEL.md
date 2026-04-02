@@ -47,6 +47,7 @@ SMTP_PORT=587
 SMTP_USER=
 SMTP_PASSWORD=
 SMTP_FROM_NAME=VetFlow CRM
+SSO_SHARED_SECRET=el-mismo-secreto-compartido-que-usa-starxia
 ```
 
 ### Notas del API
@@ -68,6 +69,7 @@ SMTP_FROM_NAME=VetFlow CRM
 
 ```env
 REACT_APP_BACKEND_URL=https://api.erp.tudominio.com
+REACT_APP_PORTAL_URL=https://www.starxia.com
 ```
 
 ### Notas del Web
